@@ -3,3 +3,4 @@ vite-project/node_modules/
 *.log
 dist/
 vite-project/dist/
+.env
