@@ -1,10 +1,15 @@
 import React from "react";
 
-const Card = ({ title, description }) => {
+const Card = ({ icon: Icon, title, description }) => {
   return (
- <div className="bg-white p-8 rounded-2xl shadow-md hover:shadow-xl hover:-translate-y-2 transition duration-300">
-      <h3 className="text-xl font-semibold mb-3">{title}</h3>
-      <p className="text-gray-600">{description}</p>
+    <div className="card p-4">
+      {Icon && (
+        <div className="mb-5 flex h-11 w-11 items-center justify-center rounded-lg bg-teal-50 text-teal-700">
+          <Icon size={22} strokeWidth={2.2} />
+        </div>
+      )}
+      <h3 className="text-lg font-semibold text-slate-950">{title}</h3>
+      <p className="mt-2 text-sm leading-6 text-slate-600">{description}</p>
     </div>
   );
 };

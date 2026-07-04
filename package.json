@@ -1,4 +1,10 @@
 {
+  "scripts": {
+    "dev": "npm --prefix vite-project run dev",
+    "build": "npm --prefix vite-project run build",
+    "lint": "npm --prefix vite-project run lint",
+    "preview": "npm --prefix vite-project run preview"
+  },
   "devDependencies": {
     "autoprefixer": "^10.4.24",
     "postcss": "^8.5.6",

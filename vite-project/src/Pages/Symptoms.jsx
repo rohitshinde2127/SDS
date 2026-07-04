@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { BrainCircuit, FileClock, Loader2, SendHorizontal } from "lucide-react";
 
 const Symptoms = () => {
   const [symptoms, setSymptoms] = useState("");
@@ -8,8 +9,16 @@ const Symptoms = () => {
 
   const navigate = useNavigate();
 
+  const getHistory = () => {
+    try {
+      return JSON.parse(localStorage.getItem("history")) || [];
+    } catch {
+      return [];
+    }
+  };
+
   const saveToHistory = (symptoms, result) => {
-    const oldHistory = JSON.parse(localStorage.getItem("history")) || [];
+    const oldHistory = getHistory();
 
     const newEntry = {
       id: Date.now(),
@@ -28,15 +37,19 @@ const Symptoms = () => {
     setResult("");
 
     try {
-      const response = await fetch("http://localhost:11434/api/generate", {
+      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
         method: "POST",
         headers: {
+          Authorization: `Bearer ${import.meta.env.VITE_OPENROUTER_API_KEY}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "phi3",
-          prompt: `
-You are a medical assistant.
+          model: "nvidia/nemotron-3-ultra-550b-a55b:free",
+
+          messages: [
+            {
+              role: "system",
+              content: `You are a medical assistant.
 
 Reply strictly in this exact format.
 Keep answers short and clear.
@@ -44,68 +57,93 @@ Do not add extra explanation.
 Maximum 6-8 lines only.
 
 Condition:
-Severity: Low / Moderate / High
+Severity: Low / Moderate /High
 Suggested Medicine:
 Doctor Type:
-Advice: (2 short lines only)
+Advice: (2 short lines only)`
+            },
+            {
+              role: "user",
+              content: `Symptoms: ${symptoms}`
+            }
+          ],
 
-Symptoms: ${symptoms}
-`,
-          stream: false,
+          temperature: 0.4,
+          max_tokens: 250
         }),
-      });
+      }
+      );
+
+      if (!response.ok) {
+        const error = await response.text();
+        throw new Error(error);
+      }
 
       const data = await response.json();
-      setResult(data.response);
 
-      //Save to history
-      saveToHistory(symptoms, data.response);
+      const aiResponse =
+        data.choices?.[0]?.message?.content || "No response received.";
+
+      setResult(aiResponse);
+
+      saveToHistory(symptoms, aiResponse);
     } catch (error) {
-      console.error("Ollama Error:", error);
-      setResult("Error connecting to AI");
+      console.error("OpenRouter Error:", error);
+      setResult("Unable to connect to OpenRouter.");
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 text-black py-16 px-4">
-      <div className="max-w-4xl mx-auto">
-        <h1 className="text-4xl text-gray-800 font-bold text-center mb-10">
-          Symptoms Checker
-        </h1>
+    <div className="min-h-screen bg-slate-50 px-4 py-24 text-slate-900">
+      <div className="mx-auto max-w-4xl">
+        <div className="mb-8 text-center">
+          <div className="mx-auto mb-5 flex h-12 w-12 items-center justify-center rounded-lg bg-teal-50 text-teal-700">
+            <BrainCircuit size={25} />
+          </div>
+          <h1 className="text-4xl font-bold tracking-tight text-slate-950">
+            Symptoms Checker
+          </h1>
+          <p className="mx-auto mt-3 max-w-2xl text-slate-600">
+            Share what you are feeling and SDS will organize the response into condition, severity, doctor type, and advice.
+          </p>
+        </div>
 
-        <div className="bg-white p-10 rounded-2xl shadow-lg">
+        <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-xl shadow-slate-900/10 sm:p-8">
           <textarea
-            className="w-full border border-gray-300 rounded-xl p-4 mb-6 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            rows="4"
-            placeholder="Describe your symptoms..."
+            className="min-h-36 w-full resize-none rounded-lg border border-slate-200 bg-slate-50 p-4 text-slate-900 placeholder:text-slate-400 focus:border-teal-400 focus:bg-white focus:outline-none focus:ring-4 focus:ring-teal-100"
+            rows="5"
+            placeholder="Example: fever, sore throat, headache for two days..."
             value={symptoms}
             onChange={(e) => setSymptoms(e.target.value)}
           />
 
-          <div className="flex gap-4">
+          <div className="mt-5 flex flex-col gap-3 sm:flex-row">
             <button
               onClick={analyzeSymptoms}
-              className="bg-blue-600 text-white px-8 py-3 rounded-full hover:bg-blue-700 transition"
+              disabled={loading}
+              className="inline-flex items-center justify-center gap-2 rounded-lg bg-teal-600 px-6 py-3 font-semibold text-white shadow-lg shadow-teal-900/10 hover:-translate-y-0.5 hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-70"
             >
-              Analyze
+              {loading ? <Loader2 className="animate-spin" size={18} /> : <SendHorizontal size={18} />}
+              {loading ? "Analyzing" : "Analyze"}
             </button>
 
             <button
               onClick={() => navigate("/history")}
-              className="bg-gray-700 text-white px-8 py-3 rounded-full hover:bg-gray-800 transition"
+              className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-6 py-3 font-semibold text-slate-800 hover:-translate-y-0.5 hover:border-teal-300 hover:text-teal-800"
             >
+              <FileClock size={18} />
               View History
             </button>
           </div>
 
           {loading && (
-            <p className="mt-4 text-gray-600">Analyzing symptoms...</p>
+            <p className="mt-4 text-sm font-medium text-slate-500">Analyzing symptoms...</p>
           )}
 
           {result && (
-            <div className="mt-8 p-6 bg-gray-50 border border-gray-200 rounded-xl whitespace-pre-wrap">
+            <div className="mt-8 whitespace-pre-wrap rounded-lg border border-teal-100 bg-teal-50/60 p-5 text-slate-800">
               {result}
             </div>
           )}
