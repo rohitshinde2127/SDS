@@ -1,15 +1,29 @@
 import React from "react";
-import { SignInButton } from "@clerk/clerk-react";
+import { SignInButton, useUser } from "@clerk/clerk-react";
 import { useNavigate } from "react-router-dom";
 import { ShieldCheck, Stethoscope, UserRound } from "lucide-react";
 
 const Auth = ({ authEnabled = true }) => {
   const navigate = useNavigate();
+  const { user, isSignedIn } = useUser();
 
-  const selectRole = (role) => {
+  const selectRole = async (role) => {
     localStorage.setItem("selectedRole", role);
 
-    if (!authEnabled) {
+    if (authEnabled && isSignedIn && user) {
+      try {
+        await user.update({
+          unsafeMetadata: {
+            ...user.unsafeMetadata,
+            role: role
+          }
+        });
+        navigate(role === "doctor" ? "/DoctorDashboard" : "/home");
+      } catch (err) {
+        console.error("Failed to update user role metadata:", err);
+        navigate(role === "doctor" ? "/DoctorDashboard" : "/home");
+      }
+    } else {
       navigate(role === "doctor" ? "/DoctorDashboard" : "/home");
     }
   };
@@ -17,7 +31,7 @@ const Auth = ({ authEnabled = true }) => {
   const patientButton = (
     <button
       onClick={() => selectRole("patient")}
-      className="inline-flex items-center justify-center gap-2 rounded-lg bg-teal-600 px-6 py-3 font-semibold text-white shadow-lg shadow-teal-900/15 hover:-translate-y-0.5 hover:bg-teal-700">
+      className="inline-flex items-center justify-center gap-2 rounded-lg bg-teal-600 px-6 py-3 font-semibold text-white shadow-lg shadow-teal-900/15 hover:-translate-y-0.5 hover:bg-teal-700 w-full">
       <UserRound size={19} />
       Patient Login
     </button>
@@ -26,11 +40,13 @@ const Auth = ({ authEnabled = true }) => {
   const doctorButton = (
     <button
       onClick={() => selectRole("doctor")}
-      className="inline-flex items-center justify-center gap-2 rounded-lg bg-slate-950 px-6 py-3 font-semibold text-white shadow-lg shadow-slate-900/15 hover:-translate-y-0.5 hover:bg-slate-800" >
+      className="inline-flex items-center justify-center gap-2 rounded-lg bg-slate-950 px-6 py-3 font-semibold text-white shadow-lg shadow-slate-900/15 hover:-translate-y-0.5 hover:bg-slate-800 w-full" >
       <Stethoscope size={19} />
       Doctor Login
     </button>
   );
+
+  const showSignInButton = authEnabled && !isSignedIn;
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-linear-to-br from-slate-950 via-cyan-950 to-teal-700 px-4 py-24 text-white">
@@ -47,13 +63,13 @@ const Auth = ({ authEnabled = true }) => {
 
       <div className="grid gap-4 rounded-lg border border-white/15 bg-white/10 p-4 shadow-2xl shadow-slate-950/25 backdrop-blur sm:grid-cols-2">
 
-        {authEnabled ? (
+        {showSignInButton ? (
           <SignInButton forceRedirectUrl="/">
             {patientButton}
           </SignInButton>
         ) : patientButton}
 
-        {authEnabled ? (
+        {showSignInButton ? (
           <SignInButton forceRedirectUrl="/">
             {doctorButton}
           </SignInButton>

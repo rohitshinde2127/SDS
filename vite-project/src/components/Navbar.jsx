@@ -46,8 +46,8 @@ const NavbarLayout = ({ isSignedIn, role, children }) => {
 };
 
 const ClerkNavbar = () => {
-  const { isSignedIn } = useUser();
-  const role = localStorage.getItem("selectedRole");
+  const { isSignedIn, user } = useUser();
+  const role = isSignedIn && user ? user.unsafeMetadata?.role || localStorage.getItem("selectedRole") : null;
 
   return (
     <NavbarLayout isSignedIn={isSignedIn} role={role}>
